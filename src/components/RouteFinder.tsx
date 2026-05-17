@@ -7,6 +7,7 @@ import { useSearchParams } from "react-router-dom";
 import logoRN from "../logoRN.png";
 import { domToCanvas } from "modern-screenshot";
 import { jsPDF } from "jspdf";
+import { supabase } from "../lib/supabase";
 
 interface Seat {
   id: string;
@@ -132,7 +133,7 @@ export function RouteFinder() {
     setHasSearched(false);
   };
 
-  const confirmBooking = () => {
+  const confirmBooking = async () => {
     // Simulate booking process
     const bookingDetails = {
       route: selectedRoute!,
@@ -141,20 +142,33 @@ export function RouteFinder() {
       date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
     };
 
-    // Persist to localStorage for the Booking page
     const newBooking = {
-      id: Date.now().toString(),
       pnr: bookingDetails.bookingId,
       from: selectedRoute!.from,
       to: selectedRoute!.to,
       date: selectedRoute!.departureDate,
       time: selectedRoute!.departureTime,
       seat: selectedSeats.length > 0 ? selectedSeats.join(", ") : "Assigned",
-      status: "confirmed" as const,
+      status: "confirmed",
       type: selectedRoute!.vehicleType,
       price: selectedSeats.length > 0 ? selectedSeats.length * selectedRoute!.price : selectedRoute!.price
     };
 
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('bookings').insert({
+          ...newBooking,
+          user_id: user.id,
+          created_at: new Date().toISOString()
+        });
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error("Database save failed, using local storage:", err);
+    }
+
+    // Persist to localStorage for fallback
     const existingRaw = localStorage.getItem('my-bookings');
     let existing = [];
     try {
@@ -163,7 +177,7 @@ export function RouteFinder() {
       existing = [];
     }
     
-    localStorage.setItem('my-bookings', JSON.stringify([...existing, newBooking]));
+    localStorage.setItem('my-bookings', JSON.stringify([...existing, { ...newBooking, id: Date.now().toString() }]));
     
     setTimeout(() => {
       setLastBooking(bookingDetails);

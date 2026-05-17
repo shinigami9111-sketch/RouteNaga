@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Ticket, MapPin, Calendar, Clock, Download, Share2, ShieldCheck, ChevronRight, History, QrCode, Trash2, AlertCircle, Plus } from "lucide-react";
 import { domToCanvas } from "modern-screenshot";
 import { jsPDF } from "jspdf";
+import { supabase } from "../lib/supabase";
 
 interface BookedTicket {
   id: string;
@@ -62,29 +63,75 @@ const PAST_BOOKINGS: BookedTicket[] = [
 
 export function Booking() {
   const navigate = useNavigate();
-  const [activeBookings, setActiveBookings] = useState<BookedTicket[]>(() => {
-    const saved = localStorage.getItem('my-bookings');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return MY_BOOKINGS;
-      }
-    }
-    return MY_BOOKINGS;
-  });
+  const [activeBookings, setActiveBookings] = useState<BookedTicket[]>([]);
+  const [loading, setLoading] = useState(true);
   const [ticketToCancel, setTicketToCancel] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) {
+        setActiveBookings(data as BookedTicket[]);
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      // Fallback to local storage if DB fails or for legacy support
+      const saved = localStorage.getItem('my-bookings');
+      if (saved) {
+        try {
+          setActiveBookings(JSON.parse(saved));
+        } catch (e) {
+          setActiveBookings(MY_BOOKINGS);
+        }
+      } else {
+        setActiveBookings(MY_BOOKINGS);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCancelClick = (id: string) => {
     setTicketToCancel(id);
   };
 
-  const confirmCancel = () => {
+  const confirmCancel = async () => {
     if (!ticketToCancel) return;
-    const updated = activeBookings.filter(ticket => ticket.id !== ticketToCancel);
-    setActiveBookings(updated);
-    localStorage.setItem('my-bookings', JSON.stringify(updated));
-    setTicketToCancel(null);
+    
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', ticketToCancel);
+
+      if (error) throw error;
+
+      const updated = activeBookings.filter(ticket => ticket.id !== ticketToCancel);
+      setActiveBookings(updated);
+      localStorage.setItem('my-bookings', JSON.stringify(updated));
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      // Local fallback
+      const updated = activeBookings.filter(ticket => ticket.id !== ticketToCancel);
+      setActiveBookings(updated);
+      localStorage.setItem('my-bookings', JSON.stringify(updated));
+    } finally {
+      setTicketToCancel(null);
+    }
   };
 
   const handleDownload = async (ticket: BookedTicket) => {

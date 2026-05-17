@@ -1,8 +1,9 @@
-import { Map, Shield, User, Menu, X, ArrowRight, Sparkles, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Moon, Sun, Info } from "lucide-react";
+import { Map, Shield, User, Menu, X, ArrowRight, Sparkles, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Moon, Sun, Info, LogOut } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays, eachDayOfInterval } from "date-fns";
+import { supabase } from "../lib/supabase";
 import logoRN from "../logoRN.png";
 
 interface NavbarProps {
@@ -340,9 +341,16 @@ export function Navbar({ isDarkMode, onToggleTheme }: NavbarProps) {
                         </div>
                      </div>
 
-                     <button className="w-full py-4 text-center text-red-600 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl transition-all border border-transparent hover:border-red-100 dark:hover:border-red-500/20">
+                     <button 
+                        onClick={async () => {
+                          await supabase.auth.signOut();
+                          setIsProfileOpen(false);
+                        }}
+                        className="w-full py-4 text-center text-red-600 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl transition-all border border-transparent hover:border-red-100 dark:hover:border-red-500/20 flex items-center justify-center gap-2"
+                      >
+                        <LogOut size={14} />
                         Sign Out
-                     </button>
+                      </button>
                    </div>
                  </motion.div>
                )}
@@ -414,8 +422,13 @@ export function Navbar({ isDarkMode, onToggleTheme }: NavbarProps) {
               </div>
 
               <div className="flex flex-col gap-4">
-                <button className="w-full py-4 text-stone-600 dark:text-stone-400 font-black uppercase tracking-widest text-[10px]">Log In</button>
-                <button className="w-full bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 py-4 rounded-xl font-black uppercase tracking-widest text-[10px]">Sign Up Free</button>
+                <button 
+                  onClick={() => supabase.auth.signOut()}
+                  className="w-full bg-red-600 text-white dark:text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-red-500/20 flex items-center justify-center gap-3 active:scale-95 transition-all"
+                >
+                  <LogOut size={16} />
+                  Finish Session
+                </button>
               </div>
            </div>
         </div>
