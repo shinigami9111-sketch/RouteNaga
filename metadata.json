@@ -1,0 +1,11 @@
+{
+  "name": "Remix: RouteNaga",
+  "description": "Smart Chalo Ai travel companion for Nagaland. Book shared Sumos, track routes, and explore tourist spots with real-time safety alerts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "Chalo Ai Travel Companion",
+    "Live Route Tracking",
+    "Emergency Support",
+    "Tourist Guide"
+  ]
+}
